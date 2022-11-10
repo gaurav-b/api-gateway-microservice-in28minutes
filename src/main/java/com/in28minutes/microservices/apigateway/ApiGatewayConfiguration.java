@@ -1,0 +1,40 @@
+package com.in28minutes.microservices.apigateway;
+
+import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class ApiGatewayConfiguration {
+
+	@Bean
+	public RouteLocator gatewayRouter(RouteLocatorBuilder builder) {
+		
+		return builder.routes()
+				.route(p -> p.path("/get")
+						.filters(f -> 
+							f.addRequestHeader("MyHeader", "MyURI")
+							.addRequestParameter("MyParam", "MyParam")) // these params can be your authentication headers
+					.uri("http://httpbin.org:80")) // this can be the url of your service
+				.route(p -> p.path("/currency-exchange/**")
+						.uri("lb://currency-exchange-service")
+						)
+				.route(p -> p.path("/currency-conversion/**")
+						.uri("lb://currency-conversion-service")
+						)
+				.route(p -> p.path("/currency-conversion-feign/**")
+						.uri("lb://currency-conversion-service")
+						)
+				.route(p -> p.path("/currency-conversion-new/**")
+						// string denoted by the segment after 'currency-conversion-new' 
+						// will get copied after 'currency-conversion-feign'
+						// by using the regexp code below
+						.filters(f -> f.rewritePath("/currency-conversion-new/(?<segment>.*)", 
+													"/currency-conversion-feign/${segment}"))
+						.uri("lb://currency-conversion-service")
+						)
+				.build();
+	}
+	
+}
